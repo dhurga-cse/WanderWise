@@ -11,7 +11,7 @@ const TripCard = ({ trip, index, onUpdate }) => {
     e.stopPropagation();
     if (window.confirm(`Delete trip to ${trip.destination}?`)) {
       try {
-        await deleteTrip(trip._id);
+        await deleteTrip(trip.id);
         onUpdate();
       } catch (error) {
         console.error('Error deleting trip:', error);
@@ -25,7 +25,7 @@ const TripCard = ({ trip, index, onUpdate }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       whileHover={{ y: -5 }}
-      onClick={() => navigate(`/trip/${trip._id}`)}
+      onClick={() => navigate(`/trip/${trip.id}`)}
       className="bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer hover:shadow-2xl transition group"
     >
       <div className="relative h-48 overflow-hidden">

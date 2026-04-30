@@ -23,7 +23,7 @@ const CreateTripPage = () => {
 
     try {
       const response = await createTrip(formData);
-      navigate(`/trip/${response.data._id}`);
+      navigate(`/trip/${response.data.id}`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create trip');
     } finally {

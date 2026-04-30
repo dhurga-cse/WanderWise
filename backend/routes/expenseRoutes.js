@@ -9,13 +9,16 @@ const router = express.Router();
 router.get('/trip/:tripId', authMiddleware, async (req, res) => {
   try {
     // Verify trip belongs to user
-    const trip = await Trip.findOne({ _id: req.params.tripId, userId: req.userId });
-    if (!trip) {
-      return res.status(404).json({ message: 'Trip not found' });
-    }
+    const trip = await Trip.findOne({
+      where: { id: req.params.tripId, userId: req.userId }
+    });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
 
-    const expenses = await Expense.find({ tripId: req.params.tripId }).sort({ createdAt: -1 });
-    
+    const expenses = await Expense.findAll({
+      where: { tripId: req.params.tripId },
+      order: [['createdAt', 'DESC']]
+    });
+
     // Calculate category-wise totals
     const categoryTotals = expenses.reduce((acc, expense) => {
       acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
@@ -41,19 +44,12 @@ router.post('/', authMiddleware, async (req, res) => {
     const { tripId, category, amount, note } = req.body;
 
     // Verify trip belongs to user
-    const trip = await Trip.findOne({ _id: tripId, userId: req.userId });
-    if (!trip) {
-      return res.status(404).json({ message: 'Trip not found' });
-    }
-
-    const expense = new Expense({
-      tripId,
-      category,
-      amount,
-      note
+    const trip = await Trip.findOne({
+      where: { id: tripId, userId: req.userId }
     });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
 
-    await expense.save();
+    const expense = await Expense.create({ tripId, category, amount, note });
     res.status(201).json(expense);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -63,18 +59,16 @@ router.post('/', authMiddleware, async (req, res) => {
 // Delete expense
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const expense = await Expense.findById(req.params.id);
-    if (!expense) {
-      return res.status(404).json({ message: 'Expense not found' });
-    }
+    const expense = await Expense.findByPk(req.params.id);
+    if (!expense) return res.status(404).json({ message: 'Expense not found' });
 
     // Verify trip belongs to user
-    const trip = await Trip.findOne({ _id: expense.tripId, userId: req.userId });
-    if (!trip) {
-      return res.status(403).json({ message: 'Unauthorized' });
-    }
+    const trip = await Trip.findOne({
+      where: { id: expense.tripId, userId: req.userId }
+    });
+    if (!trip) return res.status(403).json({ message: 'Unauthorized' });
 
-    await Expense.findByIdAndDelete(req.params.id);
+    await expense.destroy();
     res.json({ message: 'Expense deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

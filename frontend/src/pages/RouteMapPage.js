@@ -1,19 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
 import { ArrowLeft, Navigation } from 'lucide-react';
 import { getOptimizedRoute } from '../api';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Fix Leaflet default marker icon issue
+// Fix Leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Auto-fit map to show entire route
+const FitBounds = ({ coordinates }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (coordinates && coordinates.length > 0) {
+      const bounds = L.latLngBounds(coordinates);
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [coordinates, map]);
+  return null;
+};
 
 const RouteMapPage = () => {
   const navigate = useNavigate();
@@ -25,33 +37,25 @@ const RouteMapPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Auto-calculate route if URL has parameters
+  // Auto-calculate if URL has source and destination
   useEffect(() => {
     if (searchParams.get('source') && searchParams.get('destination')) {
-      handleGetRoute();
+      calculateRoute(
+        searchParams.get('source'),
+        searchParams.get('destination'),
+        searchParams.get('sourceLat') ? { lat: parseFloat(searchParams.get('sourceLat')), lng: parseFloat(searchParams.get('sourceLng')) } : null,
+        searchParams.get('destLat') ? { lat: parseFloat(searchParams.get('destLat')), lng: parseFloat(searchParams.get('destLng')) } : null
+      );
     }
   }, []);
 
-  const handleGetRoute = async (e) => {
-    if (e) e.preventDefault();
+  const calculateRoute = async (src, dest, srcCoords, dstCoords) => {
     setError('');
     setLoading(true);
-
     try {
-      // Get coordinates from URL if available
-      const sourceLat = searchParams.get('sourceLat');
-      const sourceLng = searchParams.get('sourceLng');
-      const destLat = searchParams.get('destLat');
-      const destLng = searchParams.get('destLng');
-
-      const requestData = { source, destination };
-      
-      if (sourceLat && sourceLng) {
-        requestData.sourceCoords = { lat: parseFloat(sourceLat), lng: parseFloat(sourceLng) };
-      }
-      if (destLat && destLng) {
-        requestData.destCoords = { lat: parseFloat(destLat), lng: parseFloat(destLng) };
-      }
+      const requestData = { source: src, destination: dest };
+      if (srcCoords) requestData.sourceCoords = srcCoords;
+      if (dstCoords) requestData.destCoords = dstCoords;
 
       const response = await getOptimizedRoute(requestData);
       setRouteData(response.data);
@@ -60,6 +64,11 @@ const RouteMapPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGetRoute = async (e) => {
+    e.preventDefault();
+    await calculateRoute(source, destination, null, null);
   };
 
   return (
@@ -96,7 +105,7 @@ const RouteMapPage = () => {
                 required
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
-                placeholder="Source (e.g., New York)"
+                placeholder="Source (e.g., Chennai)"
                 className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
               />
               <input
@@ -104,7 +113,7 @@ const RouteMapPage = () => {
                 required
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
-                placeholder="Destination (e.g., Boston)"
+                placeholder="Destination (e.g., Bangalore)"
                 className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
               />
             </div>
@@ -117,7 +126,14 @@ const RouteMapPage = () => {
             </button>
           </form>
 
-          {routeData && (
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+              <p className="ml-4 text-gray-600">Calculating real road route...</p>
+            </div>
+          )}
+
+          {routeData && !loading && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="bg-blue-50 p-4 rounded-xl">
@@ -130,25 +146,49 @@ const RouteMapPage = () => {
                 </div>
               </div>
 
-              <div className="h-96 rounded-2xl overflow-hidden shadow-lg">
+              {/* Map - height increased for better visibility */}
+              <div className="h-[500px] rounded-2xl overflow-hidden shadow-lg">
                 <MapContainer
-                  center={routeData.coordinates[0]}
-                  zoom={6}
+                  center={routeData.coordinates[Math.floor(routeData.coordinates.length / 2)]}
+                  zoom={10}
                   style={{ height: '100%', width: '100%' }}
+                  scrollWheelZoom={true}
                 >
                   <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   />
-                  <Polyline positions={routeData.coordinates} color="blue" weight={4} />
+
+                  {/* Auto fit map to show full route */}
+                  <FitBounds coordinates={routeData.coordinates} />
+
+                  {/* Real road route polyline */}
+                  <Polyline
+                    positions={routeData.coordinates}
+                    color="#2563EB"
+                    weight={5}
+                    opacity={0.8}
+                  />
+
+                  {/* Source marker */}
                   <Marker position={[routeData.source.coords.lat, routeData.source.coords.lng]}>
-                    <Popup>{routeData.source.name}</Popup>
+                    <Popup>
+                      <strong>Start:</strong> {routeData.source.name}
+                    </Popup>
                   </Marker>
+
+                  {/* Destination marker */}
                   <Marker position={[routeData.destination.coords.lat, routeData.destination.coords.lng]}>
-                    <Popup>{routeData.destination.name}</Popup>
+                    <Popup>
+                      <strong>End:</strong> {routeData.destination.name}
+                    </Popup>
                   </Marker>
                 </MapContainer>
               </div>
+
+              <p className="text-sm text-gray-500 mt-3 text-center">
+                🛣️ Real road route via OpenStreetMap • {routeData.coordinates.length} route points
+              </p>
             </>
           )}
         </motion.div>

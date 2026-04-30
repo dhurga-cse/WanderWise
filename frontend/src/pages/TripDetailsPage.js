@@ -268,7 +268,7 @@ ${trip.itinerary}
                   <p className="text-gray-500 text-center py-4">No expenses yet</p>
                 ) : (
                   expenses.map((expense) => (
-                    <div key={expense._id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div key={expense.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                       <div>
                         <p className="font-semibold text-gray-800">{expense.category}</p>
                         <p className="text-sm text-gray-600">{expense.note}</p>
@@ -276,7 +276,7 @@ ${trip.itinerary}
                       <div className="flex items-center gap-3">
                         <p className="font-bold text-gray-800">${expense.amount}</p>
                         <button
-                          onClick={() => handleDeleteExpense(expense._id)}
+                          onClick={() => handleDeleteExpense(expense.id)}
                           className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="w-4 h-4" />

@@ -8,7 +8,10 @@ const router = express.Router();
 // Get all trips for user
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const trips = await Trip.find({ userId: req.userId }).sort({ createdAt: -1 });
+    const trips = await Trip.findAll({
+      where: { userId: req.userId },
+      order: [['createdAt', 'DESC']]
+    });
     res.json(trips);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -18,10 +21,10 @@ router.get('/', authMiddleware, async (req, res) => {
 // Get single trip
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const trip = await Trip.findOne({ _id: req.params.id, userId: req.userId });
-    if (!trip) {
-      return res.status(404).json({ message: 'Trip not found' });
-    }
+    const trip = await Trip.findOne({
+      where: { id: req.params.id, userId: req.userId }
+    });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
     res.json(trip);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -37,14 +40,8 @@ router.post('/', authMiddleware, async (req, res) => {
     let imageUrl = '';
     try {
       const unsplashResponse = await axios.get('https://api.unsplash.com/search/photos', {
-        params: {
-          query: destination,
-          per_page: 1,
-          orientation: 'landscape'
-        },
-        headers: {
-          Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`
-        }
+        params: { query: destination, per_page: 1, orientation: 'landscape' },
+        headers: { Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` }
       });
       if (unsplashResponse.data.results.length > 0) {
         imageUrl = unsplashResponse.data.results[0].urls.regular;
@@ -53,10 +50,9 @@ router.post('/', authMiddleware, async (req, res) => {
       console.log('Unsplash API error:', err.message);
     }
 
-    // Generate basic itinerary
     const itinerary = generateItinerary(destination, days, travelType);
 
-    const trip = new Trip({
+    const trip = await Trip.create({
       userId: req.userId,
       destination,
       days,
@@ -67,7 +63,6 @@ router.post('/', authMiddleware, async (req, res) => {
       image: imageUrl
     });
 
-    await trip.save();
     res.status(201).json(trip);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -77,14 +72,12 @@ router.post('/', authMiddleware, async (req, res) => {
 // Update trip
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const trip = await Trip.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
-      req.body,
-      { new: true }
-    );
-    if (!trip) {
-      return res.status(404).json({ message: 'Trip not found' });
-    }
+    const trip = await Trip.findOne({
+      where: { id: req.params.id, userId: req.userId }
+    });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    await trip.update(req.body);
     res.json(trip);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -94,17 +87,18 @@ router.put('/:id', authMiddleware, async (req, res) => {
 // Delete trip
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const trip = await Trip.findOneAndDelete({ _id: req.params.id, userId: req.userId });
-    if (!trip) {
-      return res.status(404).json({ message: 'Trip not found' });
-    }
+    const trip = await Trip.findOne({
+      where: { id: req.params.id, userId: req.userId }
+    });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    await trip.destroy();
     res.json({ message: 'Trip deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// Helper function to generate basic itinerary
 function generateItinerary(destination, days, travelType) {
   const activities = {
     Solo: ['Explore local markets', 'Visit museums', 'Try street food', 'Photography walks'],

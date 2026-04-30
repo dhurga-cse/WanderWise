@@ -107,7 +107,7 @@ const DashboardPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {trips.map((trip, idx) => (
-              <TripCard key={trip._id} trip={trip} index={idx} onUpdate={fetchTrips} />
+              <TripCard key={trip.id} trip={trip} index={idx} onUpdate={fetchTrips} />
             ))}
           </div>
         )}

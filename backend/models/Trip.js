@@ -1,45 +1,46 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
 
-const tripSchema = new mongoose.Schema({
+const Trip = sequelize.define('Trip', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
   destination: {
-    type: String,
-    required: true,
-    trim: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   days: {
-    type: Number,
-    required: true,
-    min: 1
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
   budget: {
-    type: Number,
-    required: true,
-    min: 0
+    type: DataTypes.FLOAT,
+    allowNull: false
   },
   travelDate: {
-    type: Date,
-    required: true
+    type: DataTypes.DATEONLY,
+    allowNull: false
   },
   travelType: {
-    type: String,
-    enum: ['Solo', 'Family', 'Friends', 'Couple', 'Business'],
-    default: 'Solo'
+    type: DataTypes.ENUM('Solo', 'Family', 'Friends', 'Couple', 'Business'),
+    defaultValue: 'Solo'
   },
   itinerary: {
-    type: String,
-    default: ''
+    type: DataTypes.TEXT,
+    defaultValue: ''
   },
   image: {
-    type: String,
-    default: ''
+    type: DataTypes.TEXT,
+    defaultValue: ''
   }
 }, {
   timestamps: true
 });
 
-module.exports = mongoose.model('Trip', tripSchema);
+module.exports = Trip;

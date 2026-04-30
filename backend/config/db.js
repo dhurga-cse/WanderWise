@@ -1,13 +1,25 @@
-const mongoose = require('mongoose');
+const { Sequelize } = require('sequelize');
+
+const sequelize = new Sequelize(process.env.PG_URI, {
+  dialect: 'postgres',
+  logging: false,
+  dialectOptions: {
+    ssl: process.env.PG_SSL === 'true' ? { require: true, rejectUnauthorized: false } : false
+  }
+});
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('✅ MongoDB Connected Successfully');
+    await sequelize.authenticate();
+    console.log('✅ PostgreSQL Connected Successfully');
+
+    // Sync all models - creates tables if they don't exist
+    await sequelize.sync({ alter: true });
+    console.log('✅ Database tables synced');
   } catch (error) {
-    console.error('❌ MongoDB Connection Error:', error.message);
+    console.error('❌ PostgreSQL Connection Error:', error.message);
     process.exit(1);
   }
 };
 
-module.exports = connectDB;
+module.exports = { sequelize, connectDB };
