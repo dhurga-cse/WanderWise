@@ -1,18 +1,22 @@
-# Dependencies
+# Node.js
 node_modules/
+npm-debug.log*
 package-lock.json
+
+# React build
+frontend/build/
+
+# Spring Boot
+springboot-backend/target/
 
 # Environment variables
 .env
-.env.local
-
-# Build files
-build/
-dist/
+*.env
 
 # IDE
 .vscode/
 .idea/
+*.iml
 
 # OS
 .DS_Store
@@ -20,4 +24,3 @@ Thumbs.db
 
 # Logs
 *.log
-npm-debug.log*
