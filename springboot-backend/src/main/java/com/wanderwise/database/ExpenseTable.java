@@ -1,9 +1,9 @@
-package com.wanderwise.repository;
+package com.wanderwise.database;
 
-import com.wanderwise.model.Expense;
+import com.wanderwise.models.Expense;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
-public interface ExpenseRepository extends JpaRepository<Expense, Long> {
+public interface ExpenseTable extends JpaRepository<Expense, Long> {
     List<Expense> findByTripIdOrderByCreatedAtDesc(Long tripId);
 }

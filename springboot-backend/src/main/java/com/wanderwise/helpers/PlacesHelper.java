@@ -1,14 +1,14 @@
-package com.wanderwise.service;
+package com.wanderwise.helpers;
 
 import org.springframework.http.*;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import java.util.*;
 
-@Service
-public class RecommendationService {
+@Component
+public class PlacesHelper {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate http = new RestTemplate();
 
     private final String[] hotelPhotos = {
         "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400",
@@ -29,18 +29,17 @@ public class RecommendationService {
     };
 
     // Search places using Nominatim (free, no API key)
-    private List<Map> searchPlaces(String destination, String type) {
+    private List<Map> searchNominatim(String query) {
         try {
-            String query = type.equals("hotel") ? "hotel in " + destination : "restaurant in " + destination;
-            String url = "https://nominatim.openstreetmap.org/search?q=" +
-                    query.replace(" ", "+") +
-                    "&format=json&limit=10&addressdetails=1&extratags=1";
+            String url = "https://nominatim.openstreetmap.org/search?q="
+                    + query.replace(" ", "+")
+                    + "&format=json&limit=10&addressdetails=1&extratags=1";
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "WanderWise-TravelApp/1.0");
-            HttpEntity<String> entity = new HttpEntity<>(headers);
+            HttpEntity<String> request = new HttpEntity<>(headers);
 
-            ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
+            ResponseEntity<List> response = http.exchange(url, HttpMethod.GET, request, List.class);
             return response.getBody() != null ? response.getBody() : new ArrayList<>();
         } catch (Exception e) {
             System.out.println("Nominatim error: " + e.getMessage());
@@ -55,12 +54,11 @@ public class RecommendationService {
         else if (address.get("county") != null) parts.add((String) address.get("county"));
         if (address.get("city") != null) parts.add((String) address.get("city"));
         else if (address.get("state_district") != null) parts.add((String) address.get("state_district"));
-        if (address.get("postcode") != null) parts.add((String) address.get("postcode"));
         return parts.isEmpty() ? destination : String.join(", ", parts);
     }
 
-    public List<Map<String, Object>> getHotels(String destination) {
-        List<Map> places = searchPlaces(destination, "hotel");
+    public List<Map<String, Object>> findHotels(String destination) {
+        List<Map> places = searchNominatim("hotel in " + destination);
         List<Map<String, Object>> hotels = new ArrayList<>();
         int idx = 0;
         for (Map place : places) {
@@ -73,17 +71,19 @@ public class RecommendationService {
             hotel.put("rating", Math.round((3.5 + (idx % 5) * 0.3) * 10.0) / 10.0);
             hotel.put("priceLevel", (idx % 3) + 2);
             hotel.put("photo", hotelPhotos[idx % hotelPhotos.length]);
-            hotel.put("coords", Map.of("lat", Double.parseDouble((String) place.get("lat")),
-                                       "lng", Double.parseDouble((String) place.get("lon"))));
-            hotel.put("placeId", "nom_" + place.get("place_id"));
+            hotel.put("coords", Map.of(
+                "lat", Double.parseDouble((String) place.get("lat")),
+                "lng", Double.parseDouble((String) place.get("lon"))
+            ));
+            hotel.put("placeId", "osm_" + place.get("place_id"));
             hotels.add(hotel);
             if (++idx >= 6) break;
         }
         return hotels;
     }
 
-    public List<Map<String, Object>> getRestaurants(String destination) {
-        List<Map> places = searchPlaces(destination, "restaurant");
+    public List<Map<String, Object>> findRestaurants(String destination) {
+        List<Map> places = searchNominatim("restaurant in " + destination);
         List<Map<String, Object>> restaurants = new ArrayList<>();
         int idx = 0;
         for (Map place : places) {
@@ -100,9 +100,11 @@ public class RecommendationService {
             restaurant.put("rating", Math.round((3.5 + (idx % 5) * 0.3) * 10.0) / 10.0);
             restaurant.put("cuisineType", cuisine);
             restaurant.put("photo", foodPhotos[idx % foodPhotos.length]);
-            restaurant.put("coords", Map.of("lat", Double.parseDouble((String) place.get("lat")),
-                                            "lng", Double.parseDouble((String) place.get("lon"))));
-            restaurant.put("placeId", "nom_" + place.get("place_id"));
+            restaurant.put("coords", Map.of(
+                "lat", Double.parseDouble((String) place.get("lat")),
+                "lng", Double.parseDouble((String) place.get("lon"))
+            ));
+            restaurant.put("placeId", "osm_" + place.get("place_id"));
             restaurants.add(restaurant);
             if (++idx >= 6) break;
         }

@@ -1,4 +1,4 @@
-package com.wanderwise.security;
+package com.wanderwise.auth;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -8,7 +8,7 @@ import java.security.Key;
 import java.util.Date;
 
 @Component
-public class JwtUtil {
+public class JwtHelper {
 
     @Value("${jwt.secret}")
     private String secret;
@@ -16,31 +16,31 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long expiration;
 
-    private Key getSigningKey() {
+    private Key getKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateToken(Long userId) {
+    public String createToken(Long userId) {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public Long extractUserId(String token) {
+    public Long getUserId(String token) {
         Claims claims = Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+                .setSigningKey(getKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
         return Long.parseLong(claims.getSubject());
     }
 
-    public boolean validateToken(String token) {
+    public boolean isValidToken(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
+            Jwts.parserBuilder().setSigningKey(getKey()).build().parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;

@@ -1,4 +1,4 @@
-package com.wanderwise.security;
+package com.wanderwise.auth;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -13,27 +13,28 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 @Component
-public class JwtAuthFilter extends OncePerRequestFilter {
+public class TokenFilter extends OncePerRequestFilter {
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private JwtHelper jwtHelper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+                                    FilterChain chain) throws ServletException, IOException {
+
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            if (jwtUtil.validateToken(token)) {
-                Long userId = jwtUtil.extractUserId(token);
+            if (jwtHelper.isValidToken(token)) {
+                Long userId = jwtHelper.getUserId(token);
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(userId, null, new ArrayList<>());
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }
 
-        filterChain.doFilter(request, response);
+        chain.doFilter(request, response);
     }
 }

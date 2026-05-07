@@ -1,4 +1,4 @@
-package com.wanderwise.model;
+package com.wanderwise.models;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
